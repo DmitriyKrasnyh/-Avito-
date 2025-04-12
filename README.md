@@ -55,8 +55,8 @@ npm run dev
 ## 📬 Связь
 
 Если хочешь внести вклад, задать вопрос или предложить идею:
-- Telegram: [@yourusername](https://t.me/yourusername)
-- Email: hello@yourdomain.com
+- Telegram: [@i6_dEv_9i](https://t.me/i6_dEv_9i)
+- Email: dimathedevoloper@gmail.com
 
 ---
 
