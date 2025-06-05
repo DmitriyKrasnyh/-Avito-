@@ -94,7 +94,8 @@ def parse_avito(url):
 url = "https://www.avito.ru/vladimir/kvartiry/1-k._kvartira_45_m_1313_et._3463515777"
 
 # Парсим страницу
-result = parse_avito(url)
+if __name__ == "__main__":
+    result = parse_avito(url)
 
-# Вывод результата
-print(json.dumps(result, ensure_ascii=False, indent=4))
+    # Вывод результата
+    print(json.dumps(result, ensure_ascii=False, indent=4))
