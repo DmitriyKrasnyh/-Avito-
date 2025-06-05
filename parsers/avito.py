@@ -1,44 +1,60 @@
+"""Utilities for parsing apartment pages on Avito."""
+
+from __future__ import annotations
+
+import json
+import re
+from typing import Any, Dict, Optional
+
 import requests
 from bs4 import BeautifulSoup
-import re
-import json
 
-# Функция для парсинга страницы Avito
-def parse_avito(url):
-    headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-    "Referer": "https://www.avito.ru/",
-    "Cookie": "сюда_вставьте_ваши_cookie"
-    }
+import config
 
 
+def parse_avito(url: str, *, headers: Optional[dict[str, str]] = None) -> Optional[Dict[str, Any]]:
+    """Parse a single Avito advertisement page.
 
-    
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        print(f"Ошибка: {response.status_code}")
+    Parameters
+    ----------
+    url: str
+        Link to the Avito advertisement.
+    headers: dict[str, str] | None
+        Optional HTTP headers. If not provided ``config.HEADERS`` is used.
+
+    Returns
+    -------
+    dict | None
+        Parsed advertisement data or ``None`` when the page cannot be retrieved.
+    """
+    req_headers = headers or config.HEADERS
+
+    try:
+        response = requests.get(url, headers=req_headers, timeout=10)
+    except requests.RequestException:
         return None
-    
+
+    if response.status_code != 200:
+        return None
+
     soup = BeautifulSoup(response.text, "html.parser")
-    
-    # Извлекаем заголовок
+
     title_tag = soup.find("h1", class_="title-info-title")
     title = title_tag.text.strip() if title_tag else "Не указано"
-    
-    # Извлекаем цену
-    price_tag = soup.find("span", class_="style-item-price-text-_w822 text-text-LurtD text-size-xxl-UPhmI")
-    price = re.sub(r"[^\d]", "", price_tag.text) if price_tag else "Не указано"
-    
-    # Извлекаем адрес
+
+    price_tag = soup.find(
+        "span",
+        class_="style-item-price-text-_w822 text-text-LurtD text-size-xxl-UPhmI",
+    )
+    price = re.sub(r"[^\d]", "", price_tag.text) if price_tag else "0"
+
     address_tag = soup.find("span", class_="style-item-address__string-wt61A")
     address = address_tag.text.strip() if address_tag else "Не указан"
-    
-    # Извлекаем район (если указан)
+
     district_tag = soup.find("span", class_="style-item-address-georeferences-item-TZsrp")
     district = district_tag.text.strip() if district_tag else "Не указан"
-    
-    # Извлекаем детали квартиры
-    details = {}
+
+    details: Dict[str, str] = {}
     info_blocks = soup.find_all("li", class_="params-paramsList__item-appQw")
     for block in info_blocks:
         key_tag = block.find("span", class_="params-paramsList__item-title-appQw")
@@ -47,14 +63,12 @@ def parse_avito(url):
             key = key_tag.text.strip()
             value = value_tag.text.strip()
             details[key] = value
-    
-    # Извлекаем условия аренды (залог, комиссия, ЖКУ)
+
     deposit = "Не указан"
     commission = "Не указана"
     utilities = "Не указаны"
-    
-    rent_conditions = soup.find_all("li", class_="params-paramsList__item-appQw")
-    for condition in rent_conditions:
+
+    for condition in info_blocks:
         text = condition.text
         if "Залог" in text:
             deposit = text.split(":")[-1].strip()
@@ -62,12 +76,10 @@ def parse_avito(url):
             commission = text.split(":")[-1].strip()
         elif "ЖКУ" in text:
             utilities = text.split(":")[-1].strip()
-    
-    # Извлекаем ссылки на фото
+
     photo_tags = soup.find_all("img", class_="photo-slider-image-ESVjQ")
     photos = [tag["src"] for tag in photo_tags] if photo_tags else []
-    
-    # Собираем данные в JSON
+
     data = {
         "Заголовок": title,
         "Цена": f"{price} ₽",
@@ -85,17 +97,7 @@ def parse_avito(url):
         "Залог": deposit,
         "Комиссия": commission,
         "ЖКУ": utilities,
-        "Фото": photos
+        "Фото": photos,
     }
-    
+
     return data
-
-# Пример ссылки на объявление Avito
-url = "https://www.avito.ru/vladimir/kvartiry/1-k._kvartira_45_m_1313_et._3463515777"
-
-# Парсим страницу
-if __name__ == "__main__":
-    result = parse_avito(url)
-
-    # Вывод результата
-    print(json.dumps(result, ensure_ascii=False, indent=4))
