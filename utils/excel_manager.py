@@ -40,18 +40,24 @@ def save_to_excel(df: pd.DataFrame, output: Path | None = None) -> Path:
     ws.append(list(df.columns))
 
     for i, row in df.iterrows():
-        ws.append(row.tolist())
-        for j in range(3):
-            photo_url = row.get(f"Фото {j+1}")
-            if not photo_url:
-                continue
-            try:
-                img_data = requests.get(photo_url, timeout=10).content
-                img = Image(BytesIO(img_data))
-                img.width, img.height = 100, 75
-                ws.add_image(img, f"H{i+2}")
-            except requests.RequestException:
-                pass
+        values = []
+        for value in row:
+            if isinstance(value, list):
+                values.append(", ".join(str(v) for v in value))
+            else:
+                values.append(value)
+        ws.append(values)
+
+        photos = row.get("Фото", [])
+        if isinstance(photos, list):
+            for j, photo_url in enumerate(photos[:3]):
+                try:
+                    img_data = requests.get(photo_url, timeout=10).content
+                    img = Image(BytesIO(img_data))
+                    img.width, img.height = 100, 75
+                    ws.add_image(img, f"H{i+2}")
+                except requests.RequestException:
+                    continue
 
     ws_chart = wb.create_sheet("Графики")
 
